@@ -1,0 +1,75 @@
+name: live_track_app
+description: Aplikasi live location tracking untuk pasangan/grup privat
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Firebase
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
+  cloud_firestore: ^5.4.4
+  firebase_database: ^11.1.4     # Realtime DB untuk posisi live
+  firebase_messaging: ^15.1.3    # Push notif + trigger bunyikan HP
+
+  # Lokasi & Peta
+  geolocator: ^13.0.1            # GPS, kecepatan, background location
+  google_maps_flutter: ^2.9.0
+  flutter_background_service: ^5.0.10  # supaya tracking tetap jalan walau app di background
+
+  # Offline fallback
+  # Catatan: package 'telephony' asli sudah discontinued & tidak kompatibel
+  # dengan Android Gradle Plugin versi baru (error "Namespace not specified").
+  # 'another_telephony' adalah fork yang aktif dirawat, API identik.
+  another_telephony: ^0.4.1
+  connectivity_plus: ^6.0.5      # deteksi ada/tidaknya internet
+  shared_preferences: ^2.3.2     # cache lokasi terakhir secara lokal
+
+  # Bunyikan HP walau silent
+  audioplayers: ^6.1.0
+  vibration: ^2.0.1
+  flutter_local_notifications: ^18.0.1
+
+  # Home screen widget
+  home_widget: ^0.6.0
+
+  # HTTP untuk load foto profil marker
+  http: ^1.2.2
+
+  # Cloud Functions
+  cloud_functions: ^5.1.4
+
+  # Utility
+  uuid: ^4.5.1
+  provider: ^6.1.2               # state management
+  permission_handler: ^11.3.1
+  intl: ^0.19.0
+
+  # Typography untuk identitas visual (lihat lib/theme/app_theme.dart)
+  google_fonts: ^6.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  # Generate icon Android & iOS otomatis dari 1 file master
+  # (assets/icon/icon.png) - jalankan: dart run flutter_launcher_icons
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icon/icon.png"
+  min_sdk_android: 21
+  remove_alpha_ios: true
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/sounds/alert_ring.wav
+    - assets/icon/icon.png

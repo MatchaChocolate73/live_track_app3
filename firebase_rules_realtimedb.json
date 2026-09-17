@@ -1,0 +1,30 @@
+{
+  "rules": {
+    "groups": {
+      "$groupId": {
+        "locations": {
+          "$uid": {
+            // Baca lokasi HANYA kalau UID yang minta ada di daftar anggota
+            // grup ini (dicek lewat data grup di Firestore, disinkronkan
+            // ke sini oleh Cloud Function sebagai groupMembers/$groupId).
+            ".read": "root.child('groupMembers').child($groupId).child(auth.uid).exists()",
+
+            // Tulis lokasi HANYA boleh oleh pemilik UID itu sendiri, dan
+            // hanya kalau dia juga anggota grup tersebut.
+            ".write": "auth.uid === $uid && root.child('groupMembers').child($groupId).child(auth.uid).exists()"
+          }
+        }
+      }
+    },
+
+    // Mirror keanggotaan grup, di-update otomatis oleh Cloud Function
+    // setiap kali memberUids di Firestore berubah. Ini dipisah supaya
+    // Realtime DB rules bisa cepat cek tanpa query cross-database.
+    "groupMembers": {
+      "$groupId": {
+        ".read": false,
+        ".write": false // hanya bisa ditulis Admin SDK dari Cloud Function
+      }
+    }
+  }
+}
