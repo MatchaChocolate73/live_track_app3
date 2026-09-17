@@ -1,0 +1,105 @@
+name: Build Aplikasi (Android APK & iOS unsigned)
+
+# Jalan otomatis setiap ada push ke branch main, dan juga bisa dipicu
+# manual dari tab "Actions" di GitHub kalau perlu build ulang tanpa push.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # =====================================================================
+  # ANDROID - hasilnya APK release siap-pasang, tinggal download & install
+  # langsung ke HP. Ditandatangani otomatis pakai debug key bawaan Flutter
+  # (cukup untuk pemakaian pribadi/sideload, tidak untuk upload ke Play
+  # Store - itu butuh keystore rilis sendiri).
+  # =====================================================================
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout kode
+        uses: actions/checkout@v4
+
+      - name: Setup Java (dibutuhkan Android build)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      # Folder android/ di repo ini cuma berisi file kustom (widget home
+      # screen). Baris ini melengkapi file kerangka standar yang belum ada
+      # (build.gradle, MainActivity, dst) TANPA menimpa file yang sudah
+      # ada - aman dijalankan berkali-kali.
+      - name: Lengkapi kerangka Android yang belum ada
+        run: flutter create . --platforms=android
+
+      - name: Ambil dependency
+        run: flutter pub get
+
+      - name: Generate app icon (huruf "MC")
+        run: dart run flutter_launcher_icons
+
+      - name: Build APK release
+        run: flutter build apk --release
+
+      - name: Upload APK sebagai artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-track-app-android-release
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+  # =====================================================================
+  # iOS - CATATAN PENTING, BACA DULU SEBELUM PAKAI:
+  # Apple MEWAJIBKAN setiap app yang jalan di iPhone asli (bukan simulator)
+  # untuk ditandatangani pakai Apple ID/akun Developer - ini aturan Apple
+  # sendiri, tidak ada cara sah untuk melewatinya, termasuk untuk pemakaian
+  # pribadi. Job ini cuma menghasilkan build TANPA tanda tangan
+  # (--no-codesign), dikemas jadi .ipa mentah. File ini BELUM BISA
+  # langsung diinstall ke iPhone - kamu masih perlu menandatanganinya
+  # sendiri pakai Sideloadly dengan Apple ID kamu (gratis, tapi perlu
+  # diperbarui ulang tiap 7 hari kalau bukan akun Apple Developer
+  # berbayar $99/tahun). Detail caranya ada di README.
+  # =====================================================================
+  build-ios-unsigned:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout kode
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Lengkapi kerangka iOS yang belum ada
+        run: flutter create . --platforms=ios
+
+      - name: Ambil dependency
+        run: flutter pub get
+
+      - name: Generate app icon (huruf "MC")
+        run: dart run flutter_launcher_icons
+
+      - name: Install CocoaPods dependencies
+        run: cd ios && pod install --repo-update
+
+      - name: Build iOS tanpa tanda tangan
+        run: flutter build ios --release --no-codesign
+
+      - name: Kemas jadi .ipa mentah (belum ditandatangani)
+        run: |
+          mkdir -p build/ios/ipa_unsigned/Payload
+          cp -r build/ios/iphoneos/Runner.app build/ios/ipa_unsigned/Payload/
+          cd build/ios/ipa_unsigned
+          zip -r ../live-track-app-unsigned.ipa Payload
+
+      - name: Upload .ipa mentah sebagai artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-track-app-ios-unsigned
+          path: build/ios/live-track-app-unsigned.ipa
