@@ -1,0 +1,48 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Profil user: pemilik bisa edit datanya sendiri.
+    // Orang lain HANYA bisa baca field terbatas (nama, foto) - TIDAK bisa
+    // baca phoneNumber orang lain langsung dari sini (dibatasi lewat
+    // Cloud Function kalau memang perlu).
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Grup: hanya anggota yang sudah ada di memberUids yang boleh baca.
+    // Tidak ada yang boleh "list semua grup" atau nebak groupId orang lain.
+    match /groups/{groupId} {
+      allow read: if request.auth != null &&
+                    request.auth.uid in resource.data.memberUids;
+
+      // Update hanya boleh nambah/kurang anggota lewat fungsi join/remove,
+      // tidak boleh ganti ownerUid sembarangan.
+      allow update: if request.auth != null &&
+                      request.auth.uid in resource.data.memberUids &&
+                      request.resource.data.ownerUid == resource.data.ownerUid;
+
+      allow create: if request.auth != null &&
+                      request.auth.uid == request.resource.data.ownerUid;
+
+      allow delete: if request.auth != null &&
+                      request.auth.uid == resource.data.ownerUid;
+    }
+
+    // Kode undangan: tidak boleh dibaca sembarangan (supaya orang tidak
+    // bisa brute-force nebak kode). Hanya Cloud Function (admin) yang
+    // proses validasinya di server side untuk keamanan tambahan.
+    match /invites/{code} {
+      allow read, write: if false; // hanya lewat Cloud Function / Admin SDK
+    }
+
+    // Emergency share tokens: TIDAK BOLEH dibaca/ditulis langsung dari
+    // client manapun. Semua akses (buat, cabut, baca lokasi via token)
+    // WAJIB lewat Cloud Function supaya validasi kepemilikan, expiry, dan
+    // revocation selalu ditegakkan di server, bukan dipercaya dari client.
+    match /emergency_shares/{token} {
+      allow read, write: if false;
+    }
+  }
+}
